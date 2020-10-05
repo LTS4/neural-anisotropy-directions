@@ -1,4 +1,8 @@
 import torch
+import numpy as np
+import os
+import sys
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
 
 from models import DenseNet121
 from nad_computation import GradientCovarianceAnisotropyFinder
@@ -20,5 +24,5 @@ anisotropy_finder = GradientCovarianceAnisotropyFinder(model_gen_fun=model_gen_f
 
 eigenvalues, NADs = anisotropy_finder.estimate_NADs()
 
-np.save('NADs/DenseNet121_NADs.npy', NADs)
-np.save('NADs/DenseNet121_eigenvals.npy', eigenvalues)
+np.save('../NADs/DenseNet121_NADs.npy', NADs)
+np.save('../NADs/DenseNet121_eigenvals.npy', eigenvalues)

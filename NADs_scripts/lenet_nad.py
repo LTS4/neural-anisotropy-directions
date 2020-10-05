@@ -1,4 +1,8 @@
 import torch
+import numpy as np
+import os
+import sys
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
 
 from models import LeNet
 from nad_computation import GradientCovarianceAnisotropyFinder
@@ -20,6 +24,6 @@ anisotropy_finder = GradientCovarianceAnisotropyFinder(model_gen_fun=model_gen_f
 
 eigenvalues, NADs = anisotropy_finder.estimate_NADs()
 
-np.save('NADs/LeNet_NADs.npy', NADs)
-np.save('NADs/LeNet_eigenvals.npy', eigenvalues)
+np.save('../NADs/LeNet_NADs.npy', NADs)
+np.save('../NADs/LeNet_eigenvals.npy', eigenvalues)
 
