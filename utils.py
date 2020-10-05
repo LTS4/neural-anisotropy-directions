@@ -1,8 +1,10 @@
 import numpy as np
+import torch
+import torch.nn as nn
+import torchvision
+import torchvision.transforms as transforms
 
-from directional_bias import DEVICE
-from poison_cifar import DEVICE
-
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def train(model, trans, trainloader, testloader, epochs, max_lr, momentum, weight_decay):
     lr_schedule = lambda t: np.interp([t], [0, epochs], [max_lr, 0])[0]
