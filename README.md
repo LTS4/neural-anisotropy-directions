@@ -1,5 +1,5 @@
 # Neural Anisotropy Directions
-This is the source code to reproduce the experiments in the paper "[Neural Anisotropy Directions](https://arxiv.org/abs/2006.09717)" by Guillermo Ortiz-Jimenez*, Apostolos Modas*, Seyed-Mohsen Moosavi-Dezfooli and Pascal Frossard.
+This is the source code to reproduce the experiments in the NeuriPS 2020 paper "[Neural Anisotropy Directions](https://arxiv.org/abs/2006.09717)" by Guillermo Ortiz-Jimenez*, Apostolos Modas*, Seyed-Mohsen Moosavi-Dezfooli and Pascal Frossard.
 
 ## Abstract
 In this work, we analyze the role of the network architecture in shaping the inductive bias of deep classifiers. To that end, we start by focusing on a very simple problem, i.e., classifying a class of linearly separable distributions, and show that, depending on the direction of the discriminative feature of the distribution, many state-of-the-art deep convolutional neural networks (CNNs) have a surprisingly hard time solving this simple task. We then define as *neural anisotropy directions (NADs)* the vectors that encapsulate the directional inductive bias of an architecture. These vectors, which are specific for each architecture and hence act as a signature, encode the preference of a network to separate the input data based on some particular features. We provide an efficient method to identify NADs for several CNN architectures and thus reveal their directional inductive biases. Furthermore, we show that, for the CIFAR-10 dataset, NADs characterize features used by CNNs to discriminate between different classes.
@@ -40,5 +40,15 @@ If you use this code, please cite the following [paper](https://arxiv.org/abs/20
     JOURNAL = {arXiv:2006.09717},
     YEAR = {2020},
     MONTH = jun
+}
+```
+
+```
+@InCollection{OrtizModasNADs2020,
+    TITLE = {{Neural Anisotropy Directions}},
+    AUTHOR = {{Ortiz-Jimenez}, Guillermo and {Modas}, Apostolos and {Moosavi-Dezfooli}, Seyed-Mohsen and Frossard, Pascal},
+    BOOKTITLE = {Advances in {{Neural Information Processing Systems}} 34},
+    MONTH = dec,
+    YEAR = {2020}
 }
 ```
