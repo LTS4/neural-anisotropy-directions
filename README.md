@@ -37,7 +37,7 @@ If you use this code, please cite the following [paper](https://arxiv.org/abs/20
 @InCollection{OrtizModasNADs2020,
     TITLE = {{Neural Anisotropy Directions}},
     AUTHOR = {{Ortiz-Jimenez}, Guillermo and {Modas}, Apostolos and {Moosavi-Dezfooli}, Seyed-Mohsen and Frossard, Pascal},
-    BOOKTITLE = {Advances in {{Neural Information Processing Systems}} 34},
+    BOOKTITLE = {Advances in Neural Information Processing Systems 34},
     MONTH = dec,
     YEAR = {2020}
 }
