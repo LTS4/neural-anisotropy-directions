@@ -34,16 +34,6 @@ Architecture | Computation script
 If you use this code, please cite the following [paper](https://arxiv.org/abs/2006.09717):
 
 ```
-@article{OrtizModasNADs2020,
-    TITLE = {{Neural Anisotropy Directions}},
-    AUTHOR = {{Ortiz-Jimenez}, Guillermo and {Modas}, Apostolos and {Moosavi-Dezfooli}, Seyed-Mohsen and Frossard, Pascal},
-    JOURNAL = {arXiv:2006.09717},
-    YEAR = {2020},
-    MONTH = jun
-}
-```
-
-```
 @InCollection{OrtizModasNADs2020,
     TITLE = {{Neural Anisotropy Directions}},
     AUTHOR = {{Ortiz-Jimenez}, Guillermo and {Modas}, Apostolos and {Moosavi-Dezfooli}, Seyed-Mohsen and Frossard, Pascal},
