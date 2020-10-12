@@ -1,0 +1,771 @@
+<!--
+  Copyright 2018 The Distill Template Authors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!DOCTYPE html>
+
+<head>
+    <meta name="viewport" content="width=1200, initial-scale=1.0, user-scalable=yes" />
+    <script src="https://distill.pub/template.v2.js"></script>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://d3js.org/d3-color.v1.min.js"></script>
+    <script src="https://d3js.org/d3-interpolate.v1.min.js"></script>
+    <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+    <script src="assets/colorlegend.js"></script>
+    <script src="assets/decorate_select_network.js"></script>
+    <link rel="stylesheet" type="text/css" href="css/accuracies.css" />
+    <link rel="stylesheet" type="text/css" href="css/nad_images.css" />
+    <meta charset="utf8" />
+
+    <style>
+		p {
+			text-align: justify;
+			text-justify: inter-word;
+		}
+    </style>
+</head>
+
+<body>
+    <!-- <distill-header></distill-header> -->
+    <d-front-matter>
+        <script id="distill-front-matter" type="text/json">
+            {
+                "title": "Neural Anisotropy Directions",
+                "description": "The architecture of a neural network defines a set of directions that can be used to classify a distribution.",
+                "published": "October 12, 2020",
+                "authors": [
+                    {
+                        "author": "Guillermo Ortiz-Jimenez",
+                        "authorURL": "https://gortizji.github.io/",
+                        "affiliations": [{ "name": "EPFL" }]
+                    },
+                    {
+                        "author": "Apostolos Modas",
+                        "authorURL": "https://scholar.google.com/citations?user=Cddl4_QAAAAJ&hl=en",
+                        "affiliations": [{ "name": "EPFL" }]
+                    },
+                    {
+                        "author": "Seyed Moosavi-Dezfooli",
+                        "authorURL": "http://smoosavi.me/",
+                        "affiliations": [{ "name": "ETH Zürich" }]
+                    }
+                ],
+                "Original article": "https://arxiv.org/abs/2006.09717",
+                "katex": {
+                    "delimiters": [
+                        { "left": "$$", "right": "$$", "display": false }
+                    ]
+                }
+            }
+        </script>
+    </d-front-matter>
+    <d-title>
+        <p style="text-align: justify; text-justify: inter-word;">
+            We analyze the role of architecture in shaping the inductive bias of
+            deep classifiers, by introducing the concept of Neural
+            Anisotropy Directions (NADs) <d-cite key="OrtizModasNADs2020"></d-cite>: A sequence of vectors that encapsulate
+            the directional inductive bias of an architecture and encode its preference to separate the input data based on some
+            particular features.
+        </p>
+
+        <div class="l-body" style="position: relative; ">
+            <img src="images/cover.png", style="width: 700px;">
+        </div>
+    </d-title>
+
+    <d-byline></d-byline>
+    <d-article>
+        <p>
+            Once you are given a finite number of samples, it is usually very easy to find many models that can perfectly classify them, but it is much harder to find a model which can also generalize. To find this model, a machine learning algorithm needs to exploit its so called <em>inductive bias</em>: a set of <em>a priori</em> assumptions about the world that allows it to identify the solution which is most likely to generalize. In deep learning, one of the main sources of inductive bias is the choice of a network's architecture. But, although we know which networks work well in practice, we still do not really understand how this bias influences their behaviour.
+        </p>
+
+        <p>
+            In this blog post, we try to give an intuitive explanation on how this happens, and illustrate how the interaction between architecture and data distribution shapes the inductive bias of a neural network. An interaction that allows a neural network to go from merely memorizing the training data to learning the perfect classifier.
+        </p>
+        <p>
+            We will show this through an embarrasingly simple experiment: training SOTA neural networks to classify a linearly separable distribution. Surprisingly, though, even in this setup the choice of architecture plays a fundamental role. We will see that this role can be summarized by a sequence of vectors, or <em>neural anisotropy directions</em> (NADs), that rank the preference of an architecture to select certain features of the input data. These NADs can be computed very efficiently, even without training, and we will explain why they are fundamental in generalization in more complex datasets, such as CIFAR-10. We hope that these new intuitions can improve your understanding of DNNs.
+        </p>
+
+        <h2>An embarrasingly simple experiment</h2>
+        <p>
+            Deep learning is great! But because we mostly study it on complex problems, like classifying ImageNet, we barely know why it works so well in practice. A proof of how little we know about deep networks is how hard it is to to answer this simple question:
+        </p>
+
+        <p style="text-align: center;">
+            <em
+                >Can a modern deep neural network generalize on any linearly
+                separable task?</em
+            >
+        </p>
+        <p>
+            If you are a true statistician, you would probably think that the answer is clearly "no": CNNs are very complex models, and therefore, they must overfit. However, if you are familiar with deep learning theory, you might be inclined towards a more affirmative answer, instead. Especially if you have read some works <d-cite key="zhangUnderstandingDeepLearning2016,pmlr-v97-rahaman19a"></d-cite> that argue that deep architectures are "biased" towards simple functions, and so are pretty good at learning separable distributions. Even provbably so, for heavily overparameterized, but simple architectures <d-cite key="brutzkus2018sgd"></d-cite>.
+        </p>
+
+        <p> Reality, though, is a bit more nuanced. And in practice, the answer for most CNN architectures seems to be "it depends". In particular, "it depends on the direction of the discriminative information in the dataset", as each CNN can only learn some distributions separated by certain hyperplanes. This is, CNNs have a strong <em>directional inductive bias</em>.</p>
+        <p>
+            Testing this bias is quite easy. You just need to define a linearly separable distribution in which the data <d-math>(x,y)\sim\mathcal{D}(v)</d-math> can be separated using a hyperplane orthogonal to <d-math>v\in\mathbb{R}^{D}</d-math>, i.e.,
+            <d-math block="">x=y\,v + w\quad\text{with}\quad y\in\{-1,+1\}\quad\text{and}\quad w\sim\mathcal{N}(0,\sigma^2(I-vv^T)),</d-math>
+            and train a neural network on multiple versions of it with different values of <d-math>v</d-math>. In our experiments, because we focused on CNNs used in image classification, we decided to use Fourier basis vectors.
+        </p>
+        <d-figure
+            id="DFTAccuracy"
+            style="
+                position: relative;
+                width: 984px;
+                height: 330px;
+                overflow: hidden;
+                left: -80px;
+            "
+        >
+            <div id="acc-div" style="position: absolute; top: 0px;">
+                <div
+                    id="dft"
+                    style="
+                        position: absolute;
+                        width: 400px;
+                        left: 0px;
+                        top: 0px;
+                    "
+                ></div>
+                <div
+                    id="text"
+                    style="
+                        position: absolute;
+                        width: 400px;
+                        left: 400px;
+                        top: 0;
+                    "
+                >
+                    The figure on the left shows the test accuracy of a
+                    <select
+                        name="select_net_dft"
+                        id="select_net_dft"
+                        class="select_network"
+                    >
+                        <option value="lr">logistic classifier</option>
+                        <option value="ln" selected="selected">LeNet</option>
+                        <option value="vgg"
+                            ><div style="text-decoration: center;">
+                                VGG-11
+                            </div></option
+                        >
+                        <option value="rn">ResNet-18</option>
+                        <option value="dn">DenseNet-121</option>
+                    </select>
+                    <span id="network_name_dft" class="network_name"
+                        >LeNet</span
+                    >, trained on this linearly separable problem. Each pixel represents the test accuracy of the network trained and tested on a new <d-math>\mathcal{D}(v)</d-math>.
+                </div>
+                <div
+                    id="zoom"
+                    style="
+                        position: absolute;
+                        width: 400px;
+                        left: 390px;
+                        top: 110px;
+                        opacity: 0.3;
+                    "
+                >
+                    <span
+                        id="acc_text"
+                        style="
+                            visibility: visible;
+                            position: absolute;
+                            top: 10px;
+                            left: 30px;
+                        "
+                        ><b>Test accuracy&nbsp;</b>
+                        <span id="test_acc">50</span>%</span
+                    >
+                    <span style="position: absolute; top: 85px; left: 30px;"
+                        ><d-math>v=</d-math></span
+                    >
+                    <div
+                        id="dist"
+                        style="
+                            position: absolute;
+                            top: 20px;
+                            left: 210px;
+                            width: 200px;
+                            height: 150px;
+                        "
+                    >
+                        <svg width="400" height="160" , id="dist_svg">
+                            <defs>
+                                <marker
+                                    id="arrow"
+                                    markerWidth="10"
+                                    markerHeight="10"
+                                    refX="0"
+                                    refY="3"
+                                    orient="auto"
+                                >
+                                    <path d="M0,0 L0,6 L9,3 z" fill="#000" />
+                                </marker>
+                            </defs>
+                            <path
+                                stroke-width="2"
+                                stroke="black"
+                                d=" M 100 105 L 100 40"
+                                fill="#000"
+                                marker-end="url(#arrow)"
+                            ></path>
+                            <path
+                                stroke-width="2"
+                                fill="none"
+                                d=" M 100 105 L 200 105"
+                                stroke="black"
+                                marker-end="url(#arrow)"
+                            ></path>
+                            <rect
+                                x="20"
+                                y="0"
+                                rx="5"
+                                ry="5"
+                                fill="gray"
+                                style="stroke: none; opacity: 0.1;"
+                                width="360"
+                                height="160"
+                            ></rect>
+                        </svg>
+                        <span
+                            style="position: absolute; top: 75px; left: 210px;"
+                            ><d-math>v</d-math></span
+                        >
+                        <span
+                            style="position: absolute; top: 15px; left: 110px;"
+                            ><d-math>\mathbb{R}^{d-1}</d-math></span
+                        >
+                    </div>
+                </div>
+            </div>
+            <figcaption
+                id="dft-caption"
+                style="
+                    position: absolute;
+                    width: 140px;
+                    height: 100px;
+                    left: 840px;
+                    top: 150px;
+                "
+            >
+                A classifier can only generalize to unseen data from
+                <d-math>\mathcal{D}(v)</d-math> if it creates a hyperplane
+                orthogonal to <d-math>v</d-math> to separate the data.
+            </figcaption>
+        </d-figure>
+        <script src="assets/accuracies.js"></script>
+
+        <p>
+            As we can see, the test accuracy on this problem heavily
+            depends on the choice of direction <d-math>v</d-math>. While the naïve logistic regression always achieves near-perfect accuracy, all other CNNs only perform well on some instances of this problem. Even the gigantic DenseNet can only learn a few of these distributions!
+        </p>
+        <p>
+            Now, note that the differences in performance cannot be due to a higher complexity of
+            the CNNs. If that was the case, then deep networks would
+            always show the same test accuracy, regardless of <d-math>v</d-math>. But, instead, we are seeing that
+            they can classify only <em>some</em> distributions, despite them all being related by simple linear
+            transformations.
+        </p>
+        <div style="width: 900px; height: 250px; position: relative;">
+            <p style="width: 300px; position: absolute;">
+                    The answer to why this happens is hidden in the architecture. Indeed, if we remove all pooling layers from these CNNs, and compensate the increase of dimensionality with a larger fully connected layer at the end, we will see that these networks generalize for all Fourier directions <d-math>v</d-math><d-footnote>It is not very surprising that pooling has such a strong effect in the directional inductive bias of an architecture towards Fourier basis vectors. As it is widely known in signal processing, downsampling a signal mixes its information in the spectral domain, i.e., it causes aliasing. For this reason, if the features extracted before a pooling layer contain information in different parts of the spectrum, going through pooling might destroy this information as it aliases with some noise.</d-footnote>.
+            </p>
+            <d-figure style="width: 400px; left: 350px; position: absolute;">
+                    <img src="images/nopooldfts.png" alt="nopooldfts" style="width: 400px;">
+                    <figcaption>
+                        Test accuracy of CNNs without pooling on different <d-math>\mathcal{D}(v)</d-math> parameterized by different Fourier vectors.
+                    </figcaption>
+            </d-figure>
+        </div>
+
+
+        <p>
+            But, of course, pooling cannot be the only source of directional inductive bias, as all these CNNs have pooling, yet they generalize on very different sets of distributions. In fact, it looks as if the set of distributions  <d-math>\mathcal{D}(v)</d-math> that a network can learn is a unique signature of its architecture, as the complex interactions between its different components seems to lead to very different types of generalization patterns.
+        </p>
+
+        <h2>Neural anisotropy directions</h2>
+        <p>
+            Training and testing on different instances of <d-math>\mathcal{D}(v)</d-math> is not a very scalable procedure to test the inductive bias of an architecture. In fact, there are uncountably many directions in <d-math>\mathbb{R}^D</d-math> and we cannot even hope to test them all. But there must be another way to identify which directions a network can learn. Indeed, the directional inductive bias is an intrinsic property of the architecture, so we must be able to observe it even without training. In fact, it seems quite easy to do so.
+        </p>
+
+        <p>The key idea here is to stop worrying about training, and just focus on random neural networks, i.e., <d-math>f_\theta:\mathbb{R}^D\rightarrow\mathbb{R}</d-math> with <d-math>\theta</d-math> drawn from some random weight distribution<d-footnote>In our experiments we drew <d-math>\theta</d-math> from the standard weight initalization distribution of the network.</d-footnote>; and note that a neural network will achieve good accuracy on <d-math>\mathcal{D}(v)</d-math> if its gradient is aligned with <d-math>v</d-math><d-footnote>If the input gradient <d-math>\nabla_x f_\theta(x)</d-math> is aligned with a certain direction <d-math>v</d-math> in most datapoints, then it means that the decision boundary of the network wil be orthogonal to <d-math>v</d-math>.</d-footnote>. For this reason, we can ask ourselves, what is the number of networks with this architecture that have their gradient aligned with <d-math>v</d-math>, i.e.,
+            <d-math block="">
+                \mathbb{P}\left(|v^T\nabla_x f_\theta(x)|\geq \eta\right)\leq \frac{v^T\mathbb{E}_\theta \left[\nabla_x f_\theta(x)\nabla^T_x f_\theta(x)\right]v}{\eta^2},
+            </d-math>
+        where the upper bound can be simply obtained using Markov's inequality.
+        </p>
+
+        <p>This bound is, actually, quite easy to interpret, as it only depends on the eigenvectors of the gradient covariance<d-footnote>Given any direction <d-math>v\in\mathbb{R}^D</d-math>, the bound will be smaller whenever <d-math>v</d-math> is mostly aligned with the smallest eigenvectors of <d-math>\mathbb{E}_\theta \left[\nabla_x f_\theta(x)\nabla^T_x f_\theta(x)\right]</d-math>.</d-footnote>. In fact, we can estimate these eigenvectors using Monte Carlo, and performing PCA on a bunch of randomly sampled <d-math>\nabla_x f_\theta (x)</d-math>. We call the resulting vectors, the <em>neural anisotropy directions</em> or NADs of an architecture.</p>
+        <d-figure
+            id="NADVisualization"
+            style="
+                position: relative;
+                width: 950px;
+                height: 330px;
+                overflow: hidden;
+                left: -170px;
+            "
+        >
+            <div
+                id="line-plots"
+                style="position: absolute; left: 150px; width: 380px;"
+            ></div>
+            <div
+                id="nad-right"
+                style="position: absolute; left: 550px; width: 350px;"
+            >
+                <span id="select-network"
+                    >Visualize the NADs of a
+                    <select name="select_net_nads" id="select_net_nads">
+                        <option value="ln" selected="selected">LeNet</option>
+                        <option value="vgg"
+                            ><div style="text-decoration: center;">
+                                VGG-11
+                            </div></option
+                        >
+                        <option value="rn">ResNet-18</option>
+                        <option value="dn">DenseNet-121</option>
+                    </select>
+                    <span id="network_name_nads" class="network_name"
+                        >LeNet</span
+                    >
+                </span>
+                <div id="nad-zoom">
+                    <span id="nad-name"
+                        ><h3
+                            style="
+                                margin-top: 0em;
+                                margin-bottom: 0em;
+                                position: absolute;
+                                left: 30px;
+                                top: 60px;
+                            "
+                        >
+                            NAD
+                            <d-math
+                                >u_{<span id="show-nad-idx">3</span>}</d-math
+                            >
+                        </h3></span
+                    >
+                    <span style="position: absolute; left: 35px; top: 90px;">
+                        Spatial domain</span
+                    >
+                    <span style="position: absolute; left: 200px; top: 90px;">
+                        Frequency domain</span
+                    >
+                </div>
+            </div>
+            <figcaption
+                id="nad-gen"
+                style="position: absolute; left: 0px; width: 150px;"
+            >
+                We obtain the NADs by sampling gradients from random networks
+                and eigendecomposing their covariance matrix
+                <d-math
+                    >\mathbb{E}_{\theta}\nabla_x f_\theta(x)\nabla^T_x
+                    f_\theta(x)</d-math
+                >
+            </figcaption>
+            <figcaption
+                id="nad-acc"
+                style="position: absolute; left: 0px; top: 150px; width: 150px;"
+            >
+                The performance on <d-math>\mathcal{D}(u_i)</d-math> decreases
+                with the NAD index.
+            </figcaption>
+        </d-figure>
+        <script src="assets/nad_images.js"></script>
+
+        <p>
+            What is very surprising, is that the NADs fully encapsulate the directional inductive bias of an architecture: even if they are computed using random networks, repeating the same experiment as before but using NADs instead of Fourier vectors, yields a monotonic decay in accuracy of a neural network as we test on higher NAD indices<d-footnote>The <d-math>i</d-math>th NAD is the eigenvector of the gradient covariance associated with its <d-math>i</d-math>th largest eigenvalue.</d-footnote>.
+        </p>
+
+        <div style="width: 900px; height: 400px; position: relative;">
+            <p style="width: 420px; position: absolute;">
+                The diversity of NADs of the different networks is quite striking, and it highlights their role as a unique signature of each architecture. It suggests that each architecture uses a unique set of features to classify the data, and that the interactions between architectural elements can create very rich inductive biases. Besides, the fact that we computed NADs using random networks, but still they predict generalization performance after training on <d-math>\mathcal{D}(v)</d-math> hints towards a deeper connection between the optimization properties of a neural network, in the weight space, and its functional properties, in the input space.
+            </p>
+            <d-figure style="width: 400px; left: 470px; position: absolute;">
+                    <img src="images/nads_examples.png" alt="nads_examples" style="width: 250px;">
+                    <figcaption>
+                        First three NADs of different CNNs.
+                    </figcaption>
+            </d-figure>
+        </div>
+
+        <p> The link between the weight space and the input space on deep neural networks is largely unexplored, and we believe that NADs might give an exciting direction to better explore this connection.</p>
+<!--
+        <p>
+            <span style="color: red">Say a few words on why such inductive bias exists at first place: mention pooling as the main component but note that it acts in a rather complex way as an architecture might enjoy pooling operation in various ways. We can also breifly talk about the aliasing effect and say that it can destroy information.</span>
+
+            <span style="color: red">maybe the next part should be a separate section: The implication of NADs in learning more complex datasets/ title: NADs and CIFAR-10</span>
+
+            <span style="color: red">Is this inductive bias limited to the aforementioned toy setting or does it have implications for learning more interesting datasets? we do not have a definite answer, though we believe the latter. nevertheless, we provide a simple experiment that, hopefully, would bring some of you on the same page with us. explain the setting of the experiment and clearly mention that it still consists in a linearly separable dataset.</span>
+
+            <span style="color: red">Essentially, it can be seen as a poisoning attack and it has interesting implications for the security of deep learning systems.</span>
+
+            <span style="color: red">a short conclusion part that contains some follow-up questions: -what about other architectural elements? -how to measure directional inducitve bias for non-separable datasets? also talk about some potential applications: architecture search/robustness/invariance
+        </p> -->
+
+        <h2>NADs and CIFAR-10</h2>
+        <p>
+            So far, however, we have only talked about synthetic datasets and toy tasks. Sure, NADs are important quantities for linearly separable problems, but what about more complex tasks? Are NADs also important to learn more interesting datasets?
+        </p>
+        <p>
+            We do not have a definite answer, yet, but we believe they do. In fact, some of our most recent experiments suggest that the existence of NADs is necessary for generalization in complex datasets, such as CIFAR-10. And we have two main pieces of evidence to believe so.
+        </p>
+        <h3>Poisoning CIFAR-10</h3>
+        <p>
+            The first piece of evidence suggests that NADs determine the order in which a neural network looks for discriminative information in the training set. Or more informally, a neural network first tries to fit the data based on its projection on the lower NADs, and progressively grows the number of NADs to take into account depending on the training error.
+        </p>
+        <p>
+            We can actually test this hypothesis by modifying the CIFAR-10 training set. In particular, we can add a spurious feature in a certain NAD component of every CIFAR-10 training image and study what happens to its accuracy on the unmodified test images.
+        </p>
+
+        <d-figure
+            id="poison"
+            style="
+                position: relative;
+                width: 1000px;
+                height: 700px;
+                overflow: hidden;
+                left: -100px;
+            "
+        >
+            <form style="position: absolute; left: 100px;">
+                Select training set:
+                <input
+                    type="radio"
+                    id="cifar"
+                    name="train_set"
+                    value="cifar"
+                    checked="checked"
+                /><label for="cifar">CIFAR-10</label>
+                <input
+                    type="radio"
+                    id="poison"
+                    name="train_set"
+                    value="poison"
+                /><label for="poison">Poisoned CIFAR-10</label>
+            </form>
+            <div
+                id="poison-graphics"
+                style="
+                    position: absolute;
+                    left: 0px;
+                    width: 900px;
+                    height: 900px;
+                    top: 50px;
+                "
+            >
+                <style type="text/css">
+                    .coeff {
+                        fill: gray;
+                    }
+                    .image {
+                        width: 100px;
+                        height: 100px;
+                        x: 0px;
+                    }
+                    .nad {
+                        width: 90px;
+                        height: 90px;
+                        y: 5px;
+                    }
+                    .nad.first {
+                        x: 190px;
+                    }
+                    .nad.second {
+                        x: 360px;
+                    }
+                    .nad.third {
+                        x: 573px;
+                    }
+                    .clip {
+                        fill: none;
+                        stroke: white;
+                        stroke-width: 7px;
+                        rx: 10px;
+                        ry: 10px;
+                    }
+                    .number {
+                        fill: gray;
+                        transition: fill 500ms;
+                        opacity: 0.15;
+                        stroke: white;
+                        stroke-width: 3px;
+                        rx: 8px;
+                        ry: 8px;
+                        width: 45px;
+                        height: 30px;
+                    }
+                    .number.poison_cat {
+                        fill: orange;
+                        transition: fill 500ms;
+                    }
+                    .number.poison_dog {
+                        fill: green;
+                        transition: fill 500ms;
+                    }
+                    .class_sep {
+                        height: 260px;
+                        width: 5px;
+                        rx: 5px;
+                        ry: 5px;
+                        fill: black;
+                        opacity: 0.5;
+                    }
+                    .coefficient {
+                        width: 40px;
+                        height: 30px;
+                    }
+                    .nad_coefficient {
+                        width: 40px;
+                        height: 30px;
+                    }
+                </style>
+                <svg style="width: 900px; height: 900px;">
+                    <g transform="translate(0,0)">
+                    <rect class="class_sep" x="80" y="0"></rect>
+                     <foreignobject x="30" y="120" width="30" height="30">
+                     Dog
+                     </foreignobject>
+                        <image href="images/poisoning-dog.png" width="90%" x="80" id="dog_class">
+                   </g>
+
+                    <g transform="translate(0,350)">
+                                             <rect class="class_sep" x="80" y="0"></rect>
+                        <foreignobject x="30" y="120" width="30" height="30">
+                            Cat
+                        </foreignobject>
+                        <image href="images/poisoning-cat.png" width="90%" x="80" id="cat_class">
+                    </g>
+                </svg>
+            </div>
+            <figcaption
+                id="nad-decomposition"
+                style="
+                    position: absolute;
+                    top: 50px;
+                    left: 850px;
+                    width: 150px;
+                "
+            >
+                We can represent all CIFAR-10 samples as a linear combination of
+                NAD vectors.
+            </figcaption>
+
+            <figcaption
+                id="poison-explanation"
+                style="
+                    position: absolute;
+                    top: 215px;
+                    left: 850px;
+                    width: 150px;
+                    visibility: hidden;
+                "
+            >
+                <p>
+                    To poison the dataset we can introduce a very discriminative
+                    feature in all training samples in one NAD coefficient.
+                </p>
+                <p>
+                    This feature is enough to separate the training set but does
+                    not generalize to the test set.
+                </p>
+            </figcaption>
+        </d-figure>
+        <script src="assets/poison.js"></script>
+
+        <p>Note that poisoning CIFAR-10 renders its training set linearly separable. However, if a neural network tries to fit the training data using a hyperplane orthogonal to the spurious feature, it will not be able to generalize to the test set<d-footnote>In a sense, this experiment is the opposite to the previous one with <d-math>\mathcal{D}(v)</d-math>. Before we said that a network generalized nicely if it found the information in <d-math>v</d-math>. Now, the network generalizes correctly if it can avoid the information in <d-math>v</d-math>.</d-footnote>.</p>
+
+        <div style="width: 900px; height: 220px; position: relative;">
+            <d-figure style="width: 450px; position: absolute;">
+                    <img src="images/poison.png" alt="poison" style="width: 430px;">
+                    <!-- <figcaption>
+                        First three NADs of different CNNs.
+                    </figcaption> -->
+            </d-figure>
+            <p style="width: 240px; left: 460px; position: absolute;">
+                Using this setup, we trained a ResNet-18 on multiple versions of the poisoned CIFAR-10 training set where the poisonous feature was placed at different NAD indices.
+            </p>
+        </div>
+
+        <p>As we can see, when the dataset is poisoned on the first NAD index the network fully overfits. But when the spurious feature is placed at the last NAD, the network can generalize. In between these two extremes we see a gradual increase in the test performance. This can only be explained if the network is progressively picking more features from the original CIFAR-10 data, before finding the poisonous signal. This clearly suggests to the existence of an ordered preference of features for CNNs, determined by the NAD basis.</p>
+
+        <h3>NADs are necessary for generalization</h3>
+            <p>
+                NADs seem to determine the order of selected features in a dataset, but are they really necessary for generalization? We believe they are, and we actually think that their particular structure is what explains the good performance of most CNNs on image datasets<d-footnote>It seems that for most CNNs, the NADs are mostly aligned with low spatial frequencies. Natural images are mostly concentrated in this part of the spectrum, and the human visual system is mostly sensitive to information contained on it.</d-footnote>.
+            </p>
+
+            <p>
+                In order to support this hypothesis, we tried a funny experiment whose goal was to investigate the role of NADs as filters of non-generalizing solutions. In particular, we wanted to test the possible positive synergies arising from the alignment of NADs with the generalizing features of the training set.
+            </p>
+
+            <p>
+                To do so, we trained multiple CNNs using the same hyperparameters on two representations of CIFAR-10: the original representation, and a new one in which we flipped the representation of the data in the NAD basis<d-footnote>That is, for every sample <d-math>x</d-math> in the training and test sets we computed <d-math>x'= U\,\text{flip}(U^T x)</d-math>, where <d-math>U</d-math> represents a matrix with NAD vectors in its columns.</d-footnote> . Note that applying this transformation equates to a linear rotation of the input space and has no impact on the information of the data distribution. In fact, training on both representations yielded approximately 0% training error.
+            </p>
+
+            <div style="width: 900px; height: 280px; position: relative;">
+                <d-figure style="width: 400px; position: absolute;">
+                        <img src="images/nad_rotation.png" alt="nad-rotation" style="width: 400px;">
+                        <figcaption>
+                            Test accuracy on CIFAR-10 and flipped CIFAR-10.
+                        </figcaption>
+                </d-figure>
+                <p style="width: 270px; left: 430px; position: absolute;">
+                    The result of these experiments shows that the performance of the networks trained on the flipped datasets is significantly lower than those on the original CIFAR-10. This demonstrates that misaligning the inductive bias of the networks with the dataset makes them prone to overfit.
+                </p>
+            </div>
+            <p>We see these resutlts as strong supporting evidence that through the years the research community has managedt o impose the right inductive biases in deep neural architectures.  Letting them filter out spurious and noisy signals and hence being able to solve most standard vision benchmarks.</p>
+
+        <h2>Final remarks</h2>
+
+        <p>
+            In this post, we have described a new type of model-driven inductive bias that controls generalizationin deep neural networks: the directional inductive bias. We have seen that this bias is summarized by the NADs of an architecture, which seem to be responsible for the selection of discriminative features by a CNN.
+        </p>
+
+        <p>
+            The existence of NADs demonstrates that the full set of inductive biases in deep learning is much richer than it was previously believed. Prior to our work, some researchers highlighted that neural networks could memorize a dataset when there was no generalizable information present in the data <d-cite key="zhangUnderstandingDeepLearning2016"></d-cite>. Our experiments, however, complement this observation, and show that most CNNs may prefer memorization over generalization, even when there is some highly discriminative feature in the data. Surprisingly, this phenomenon is not only attributable to some property of the data, but also to the structure of the architecture.
+        </p>
+
+        <p>
+            We think there are many possibilities to use NADs in future research an novel applications. For instance, we are very excited about the possibility of using NADs to comprehensively study architectures in deep learning. We have seen that pooling plays an important role in NADs for CNNs, but what about other layers or components in these architectures? And, can we think beyond image data, and use NADs to understand the misterious transformers or the promising GNNs? In general we see NADs as an interesting tool in AutoML, as they can give an explicit framework to align the inductive biases of an architecture, with our <em>a priori</em> knowledge of a task. This gives an exciting path towards the design of new architectures with richer invariances and more robust to adversarial and naturally occuring distribution shifts.
+        </p>
+
+        <p>
+            Finally, it is important to note that our results mostly apply to cases in which the data was fully separable, i.e. there was no label noise. And even more specifically, to the linearly separable case. In this sense, it still remains an open problem to understand how the directional inductive bias of deep learning influences neural networks trying to learn non-separable datasets.
+        </p>
+
+        <!-- a short conclusion part that contains some follow-up questions: -what about other architectural elements? -how to measure directional inducitve bias for non-separable datasets? also talk about some potential applications: architecture search/robustness/invariance -->
+
+        <!-- <div id="disqus_thread"></div> -->
+    </d-article>
+
+    <d-appendix>
+        <style>
+            .citation {
+            contain: layout style;
+              font-size: 11px;
+              line-height: 15px;
+              border-left: 1px solid rgba(0, 0, 0, 0.1);
+              padding-left: 18px;
+              border: 1px solid rgba(0,0,0,0.1);
+              background: rgba(0, 0, 0, 0.02);
+              padding: 10px 18px;
+              border-radius: 3px;
+              color: rgba(150, 150, 150, 1);
+              overflow: hidden;
+              margin-top: -12px;
+              white-space: pre-wrap;
+              word-wrap: break-word;
+            }
+
+        </style>
+            <h3>Citation</h3>
+            <p>This blog post is a short version of the NeurIPS 2020 article "<a href="https://arxiv.org/abs/2006.09717">Neural Anisotropy Directions</a>". If you want to cite it, please cite the original paper
+            </p>
+            <p>
+                <pre class="citation">G. Ortiz-Jimenez, A. Modas, S.M. Moosavi-Dezfooli, and P. Frossard, “Neural Anisotropy Directions,” in Advances in Neural Information Processing Systems 34 (NeurIPS), Dec. 2020</pre>
+            </p>
+            <h3>Acknowledgements</h3>
+            <p>
+                To lighten this article and point the reader only to the most relevant papers, we cited only a subset of the relevant work that we built on. Please refer to the bibliography of the original paper for the complete list.
+            </p>
+            <p>
+                The article template is due to <a href="https://distill.pub/">distill.pub</a> and many formatting styles are inspired from other articles appearing on Distill.
+            </p>
+            <d-bibliography>
+                <script type="text/bibtex">
+
+                @inproceedings{OrtizModasNADs2020,
+                    TITLE = {Neural Anisotropy Directions},
+                    AUTHOR = {Ortiz-Jimenez, Guillermo and Modas, Apostolos and Moosavi-Dezfooli, Seyed-Mohsen and Frossard, Pascal},
+                    BOOKTITLE = {Advances in Neural Information Processing Systems 34 (NeurIPS)},
+                    MONTH = dec,
+                    YEAR = {2020},
+                    URL = {https://arxiv.org/pdf/2006.09717.pdf}
+                }
+
+                @inproceedings{zhangUnderstandingDeepLearning2016,
+                    TITLE = {Understanding Deep Learning Requires Rethinking Generalization},
+                    AUTHOR = {Zhang, Chiyuan and Bengio, Samy and Hardt, Moritz and Recht, Benjamin and Vinyals, Oriol},
+                    BOOKTITLE = {International Conference on Learning Representations, (ICLR)},
+                    YEAR = {2017},
+                    url = {https://openreview.net/pdf?id=Sy8gdB9xx}
+                }
+
+                @InProceedings{pmlr-v97-rahaman19a,
+                    title = {On the Spectral Bias of Neural Networks},
+                    author = {Rahaman, Nasim and Baratin, Aristide and Arpit, Devansh and Draxler, Felix and Lin, Min and Hamprecht, Fred and Bengio, Yoshua and Courville, Aaron},
+                    year = {2019},
+                    booktitle = {International Conference on Machine Learning (ICML)},
+                    url = {http://proceedings.mlr.press/v97/rahaman19a/rahaman19a.pdf}
+                }
+
+                @inproceedings{
+                    brutzkus2018sgd,
+                    title={SGD Learns Over-parameterized Networks that Provably Generalize on Linearly Separable Data},
+                    author={Alon Brutzkus and Amir Globerson and Eran Malach and Shai Shalev-Shwartz},
+                    booktitle={International Conference on Learning Representations (ICLR)},
+                    year={2018},
+                    url={https://openreview.net/forum?id=rJ33wwxRb},
+                }
+                </script>
+              </d-bibliography>
+    </d-appendix>
+    <d-article>
+        <div id="disqus_thread" ></div>
+    </d-article>
+
+
+
+<script>
+    /**
+     *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT
+     *  THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR
+     *  PLATFORM OR CMS.
+     *
+     *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT:
+     *  https://disqus.com/admin/universalcode/#configuration-variables
+     */
+    /*
+    var disqus_config = function () {
+        // Replace PAGE_URL with your page's canonical URL variable
+        this.page.url = PAGE_URL;
+
+        // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+        this.page.identifier = PAGE_IDENTIFIER;
+    };
+    */
+
+    (function() {  // REQUIRED CONFIGURATION VARIABLE: EDIT THE SHORTNAME BELOW
+        var d = document, s = d.createElement('script');
+
+        s.src = 'https://nads2020.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+    })();
+</script>
+
+
+<noscript>
+    Please enable JavaScript to view the
+    <a href="https://disqus.com/?ref_noscript" rel="nofollow">
+        comments powered by Disqus.
+    </a>
+</noscript>
+    <!-- <distill-footer></distill-footer> -->
+</body>

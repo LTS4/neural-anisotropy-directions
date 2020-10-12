@@ -1,0 +1,9 @@
+.axis line{
+        fill:"none";
+        opacity: 0.2;
+}
+
+.axis path{
+        fill:"none";
+        opacity:0.2;
+}
