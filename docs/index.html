@@ -114,7 +114,7 @@
             In this blog post, we try to give an intuitive explanation on how this happens, and illustrate how the interaction between architecture and data distribution shapes the inductive bias of a neural network. An interaction that allows a neural network to go from merely memorizing the training data to learning the perfect classifier.
         </p>
         <p>
-            We will show this through an embarrasingly simple experiment: training SOTA neural networks to classify a linearly separable distribution. Surprisingly, though, even in this setup the choice of architecture plays a fundamental role. We will see that this role can be summarized by a sequence of vectors, or <em>neural anisotropy directions</em> (NADs), that rank the preference of an architecture to select certain features of the input data. These NADs can be computed very efficiently, even without training, and we will explain why they are fundamental in generalization in more complex datasets, such as CIFAR-10. We hope that these new intuitions can improve your understanding of DNNs.
+            We will show this through an embarrasingly simple experiment: training neural networks used in practice to classify a linearly separable distribution. Surprisingly, though, even in this setup the choice of architecture plays a fundamental role, and although all networks achieve good training accuracy, they do not always manage to generalize. We will see that the role of architecture can be summarized by a sequence of vectors, or <em>neural anisotropy directions</em> (NADs), that rank the preference of an architecture to select certain features of the input data. These NADs can be computed very efficiently, even without training, and we will explain why they are fundamental in generalization in more complex datasets, such as CIFAR-10. We hope that these new intuitions can improve your understanding of DNNs.
         </p>
 
         <h2>An embarrasingly simple experiment</h2>
@@ -129,10 +129,11 @@
             >
         </p>
         <p>
-            If you are a true statistician, you would probably think that the answer is clearly "no": CNNs are very complex models, and therefore, they must overfit. However, if you are familiar with deep learning theory, you might be inclined towards a more affirmative answer, instead. Especially if you have read some works <d-cite key="zhangUnderstandingDeepLearning2016,pmlr-v97-rahaman19a"></d-cite> that argue that deep architectures are "biased" towards simple functions, and so are pretty good at learning separable distributions. Even provbably so, for heavily overparameterized, but simple architectures <d-cite key="brutzkus2018sgd"></d-cite>.
+            If you are a true statistician, you would probably think that the answer is clearly "no": CNNs are very complex models, and therefore, they must overfit. However, if you are familiar with deep learning theory, you might be inclined towards a more affirmative answer, instead. Especially if you have read some works <d-cite key="zhangUnderstandingDeepLearning2016,pmlr-v97-rahaman19a"></d-cite> that argue that deep architectures are "biased" towards simple functions, and so are pretty good at learning separable distributions. Even provably so, for heavily overparameterized, but simple architectures <d-cite key="brutzkus2018sgd"></d-cite>.
         </p>
 
-        <p> Reality, though, is a bit more nuanced. And in practice, the answer for most CNN architectures seems to be "it depends". In particular, "it depends on the direction of the discriminative information in the dataset", as each CNN can only learn some distributions separated by certain hyperplanes. This is, CNNs have a strong <em>directional inductive bias</em>.</p>
+        <p> Reality, though, is a bit more nuanced. And in practice, the answer for most CNN architectures seems to be "it depends". In particular, "it depends on the direction of the discriminative information in the dataset". We observe experimentally that each CNN cannot always solve the problem — they can do it only when the distribution is separable by certain hyperplanes. This is, CNNs have a strong <em>directional inductive bias</em>.</p>
+
         <p>
             Testing this bias is quite easy. You just need to define a linearly separable distribution in which the data <d-math>(x,y)\sim\mathcal{D}(v)</d-math> can be separated using a hyperplane orthogonal to <d-math>v\in\mathbb{R}^{D}</d-math>, i.e.,
             <d-math block="">x=y\,v + w\quad\text{with}\quad y\in\{-1,+1\}\quad\text{and}\quad w\sim\mathcal{N}(0,\sigma^2(I-vv^T)),</d-math>
@@ -289,7 +290,7 @@
 
         <p>
             As we can see, the test accuracy on this problem heavily
-            depends on the choice of direction <d-math>v</d-math>. While the naïve logistic regression always achieves near-perfect accuracy, all other CNNs only perform well on some instances of this problem. Even the gigantic DenseNet can only learn a few of these distributions!
+            depends on the choice of direction <d-math>v</d-math><d-footnote>Place the cursor over a pixel to see the direction <d-math>v</d-math> used for training.</d-footnote>. While the naïve logistic regression always achieves near-perfect accuracy, all other CNNs only perform well on some instances of this problem. Even the gigantic DenseNet can only learn a few of these distributions!
         </p>
         <p>
             Now, note that the differences in performance cannot be due to a higher complexity of
@@ -409,12 +410,12 @@
         <script src="assets/nad_images.js"></script>
 
         <p>
-            What is very surprising, is that the NADs fully encapsulate the directional inductive bias of an architecture: even if they are computed using random networks, repeating the same experiment as before but using NADs instead of Fourier vectors, yields a monotonic decay in accuracy of a neural network as we test on higher NAD indices<d-footnote>The <d-math>i</d-math>th NAD is the eigenvector of the gradient covariance associated with its <d-math>i</d-math>th largest eigenvalue.</d-footnote>.
+            What is very surprising is that the NADs fully encapsulate the directional inductive bias of an architecture: even if they are computed using random networks, repeating the same experiment as before but using NADs instead of Fourier vectors, yields a monotonic decay in accuracy of a neural network as we test on higher NAD indices<d-footnote>The <d-math>i</d-math>th NAD is the eigenvector of the gradient covariance associated with its <d-math>i</d-math>th largest eigenvalue.</d-footnote>.
         </p>
 
-        <div style="width: 900px; height: 400px; position: relative;">
+        <div style="width: 900px; height: 450px; position: relative;">
             <p style="width: 420px; position: absolute;">
-                The diversity of NADs of the different networks is quite striking, and it highlights their role as a unique signature of each architecture. It suggests that each architecture uses a unique set of features to classify the data, and that the interactions between architectural elements can create very rich inductive biases. Besides, the fact that we computed NADs using random networks, but still they predict generalization performance after training on <d-math>\mathcal{D}(v)</d-math> hints towards a deeper connection between the optimization properties of a neural network, in the weight space, and its functional properties, in the input space.
+                The diversity of NADs of the different networks is quite striking, and it highlights their role as a unique signature of each architecture. It suggests that each architecture uses a unique set of features to classify the data, and that the interactions between architectural elements can create very rich inductive biases. Besides, the fact that we computed NADs using random networks, but still they predict generalization performance after training hints towards a deeper connection between the optimization properties of a neural network and its functional properties. The link between the weight space and the input space on deep neural networks is largely unexplored, and we believe that NADs might give an exciting direction to better explore this connection.
             </p>
             <d-figure style="width: 400px; left: 470px; position: absolute;">
                     <img src="images/nads_examples.png" alt="nads_examples" style="width: 250px;">
@@ -424,8 +425,8 @@
             </d-figure>
         </div>
 
-        <p> The link between the weight space and the input space on deep neural networks is largely unexplored, and we believe that NADs might give an exciting direction to better explore this connection.</p>
-<!--
+<!--         <p> The link between the weight space and the input space on deep neural networks is largely unexplored, and we believe that NADs might give an exciting direction to better explore this connection.</p>
+ --><!--
         <p>
             <span style="color: red">Say a few words on why such inductive bias exists at first place: mention pooling as the main component but note that it acts in a rather complex way as an architecture might enjoy pooling operation in various ways. We can also breifly talk about the aliasing effect and say that it can destroy information.</span>
 
@@ -443,11 +444,11 @@
             So far, however, we have only talked about synthetic datasets and toy tasks. Sure, NADs are important quantities for linearly separable problems, but what about more complex tasks? Are NADs also important to learn more interesting datasets?
         </p>
         <p>
-            We do not have a definite answer, yet, but we believe they do. In fact, some of our most recent experiments suggest that the existence of NADs is necessary for generalization in complex datasets, such as CIFAR-10. And we have two main pieces of evidence to believe so.
+            We do not have a definite answer, yet, but we believe they do. In fact, some of our most recent experiments suggest that the existence of NADs is necessary for generalization in complex datasets, such as CIFAR-10. We have two main pieces of evidence to believe so.
         </p>
         <h3>Poisoning CIFAR-10</h3>
         <p>
-            The first piece of evidence suggests that NADs determine the order in which a neural network looks for discriminative information in the training set. Or more informally, a neural network first tries to fit the data based on its projection on the lower NADs, and progressively grows the number of NADs to take into account depending on the training error.
+            The first piece of evidence suggests that NADs determine the order in which a neural network looks for discriminative information in the training set. Or more informally, a CNN first tries to fit the data based on its projection on the lower NADs, and progressively grows the number of NADs to take into account depending on the training error.
         </p>
         <p>
             We can actually test this hypothesis by modifying the CIFAR-10 training set. In particular, we can add a spurious feature in a certain NAD component of every CIFAR-10 training image and study what happens to its accuracy on the unmodified test images.
@@ -622,7 +623,7 @@
             </p>
         </div>
 
-        <p>As we can see, when the dataset is poisoned on the first NAD index the network fully overfits. But when the spurious feature is placed at the last NAD, the network can generalize. In between these two extremes we see a gradual increase in the test performance. This can only be explained if the network is progressively picking more features from the original CIFAR-10 data, before finding the poisonous signal. This clearly suggests to the existence of an ordered preference of features for CNNs, determined by the NAD basis.</p>
+        <p>As we can see, when the dataset is poisoned on the first NAD index, the network fully overfits. But when the spurious feature is placed at the last NAD, the network can generalize. In between these two extremes we see a gradual increase in the test performance. This can only be explained if the network is progressively picking more features from the original CIFAR-10 data, before finding the poisonous signal. This clearly suggests to the existence of an ordered preference of features for CNNs, determined by the NAD basis.</p>
 
         <h3>NADs are necessary for generalization</h3>
             <p>
@@ -634,7 +635,7 @@
             </p>
 
             <p>
-                To do so, we trained multiple CNNs using the same hyperparameters on two representations of CIFAR-10: the original representation, and a new one in which we flipped the representation of the data in the NAD basis<d-footnote>That is, for every sample <d-math>x</d-math> in the training and test sets we computed <d-math>x'= U\,\text{flip}(U^T x)</d-math>, where <d-math>U</d-math> represents a matrix with NAD vectors in its columns.</d-footnote> . Note that applying this transformation equates to a linear rotation of the input space and has no impact on the information of the data distribution. In fact, training on both representations yielded approximately 0% training error.
+                To do so, we trained multiple CNNs using the same hyperparameters on two representations of CIFAR-10: the original representation, and a new one in which we flipped the representation of the data in the NAD basis<d-footnote>That is, for every sample <d-math>x</d-math> in the training and test sets we computed <d-math>x'= U\,\text{flip}(U^T x)</d-math>, where <d-math>U</d-math> represents a matrix with NAD vectors in its columns.</d-footnote> . Note that this transformation is a linear rotation of the input space, and it has no impact on the information of the data distribution. In fact, training on both representations yielded approximately 0% training error.
             </p>
 
             <div style="width: 900px; height: 280px; position: relative;">
